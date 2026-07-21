@@ -1,0 +1,44 @@
+# QuantSkills project manifest — skill-soros-reflexivity-detector (#48)
+metadata:
+  organization: QuantSkills
+  organization_url: https://github.com/quantskills
+  repository: skill-soros-reflexivity-detector
+  repository_url: https://github.com/quantskills/skill-soros-reflexivity-detector
+  project_type: skill
+  collection: master-strategies
+  license: GPL-3.0-only
+  status: community-project          # 未经官方审核/认证
+  maintainer: ZLHad
+
+name: 索罗斯反身性识别器 (Soros Reflexivity Detector)
+summary: >-
+  用双环模型（快环情绪-资金 / 慢环基本面-资本）识别 A 股自我强化的反身性行情，
+  输出八阶段（先知先觉→大众追涨→狂热见暮色→破裂→越跌越卖）+ 仓位纪律 + 脆弱预警。
+  不预测顶底、非投资建议。
+
+declaration: SKILL.md
+detailed_skill: 开发产物/SKILL.md
+readme:
+  zh: README.md
+  en: README.en.md
+
+data_source: PandaData (panda_data>=0.0.9)
+dependencies: [panda_data>=0.0.9, pandas, numpy, pyarrow]
+
+entrypoints:
+  cli: python 开发产物/scripts/build.py --mode watchlist
+  scan: python 开发产物/scripts/build.py --mode scan
+  call: 开发产物/scripts/build.py:run
+  analyze: 开发产物/scripts/reflexivity.py:analyze
+  test: python 开发产物/scripts/test.py
+  render_html: 开发产物/scripts/render.py:render_html
+
+runtimes:
+  claude-code: { declaration: 开发产物/SKILL.md, invoke: cli }
+  codex:       { declaration: SKILL.md, invoke: cli }
+  cursor:      { declaration: SKILL.md, invoke: cli }
+
+disclaimer: >-
+  Community Project，未经 QuantSkills 官方审核/认证/背书。仅供量化研究与教育示例，
+  不构成投资建议，不承诺收益，不预测顶底。反身性阶段与仓位建议为纪律参考、非交易指令。
+  北向个股数据 2024/08 后多停披露，相关成分默认零权重。数据源、假设、参数、限制与风险边界见 SKILL.md。

@@ -1,0 +1,30 @@
+{
+  "name": "skill-soros-reflexivity-detector",
+  "version": "1.0.0",
+  "build_id": "48",
+  "type": "build",
+  "category": "monitor+report",
+  "description": "索罗斯反身性识别器：双环模型（快环情绪-资金/慢环基本面-资本）做 A 股反身性阶段识别与仓位纪律，可被复盘 agent 或 Alpha 调用。",
+  "data_source": "PandaData (panda_data>=0.0.9)",
+  "entrypoints": {
+    "run": "scripts/build.py:run",
+    "validate_input": "scripts/build.py:validate_input",
+    "maintain_daily": "scripts/build.py:maintain_daily",
+    "backfill": "scripts/build.py:backfill",
+    "save_parquet": "scripts/build.py:save_parquet",
+    "analyze": "scripts/reflexivity.py:analyze",
+    "render_markdown": "scripts/render.py:render_markdown",
+    "render_html": "scripts/render.py:render_html",
+    "render_timeline_svg": "scripts/render.py:render_timeline_svg"
+  },
+  "inputs": ["symbols|mode=scan|panel", "date", "config"],
+  "outputs": {
+    "format": "pandas.DataFrame (BUILD §11 面板)",
+    "result_types": ["reflexivity_stock", "reflexivity_summary"],
+    "primary_key": ["trade_date", "build_id", "target_id", "result_type"]
+  },
+  "callable_by_alpha": true,
+  "produces_parquet": true,
+  "offline_testable": true,
+  "disclaimer": "仅量化研究与教育示例，不构成投资建议，不承诺收益，不预测顶底。"
+}
