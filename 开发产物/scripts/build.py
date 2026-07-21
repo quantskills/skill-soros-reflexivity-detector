@@ -42,7 +42,9 @@ BUILD_ROOT = DEV_ROOT.parent
 DEFAULT_OUT = BUILD_ROOT / "生产产物" / "database.parquet"
 
 _PANEL_COLS = ["p_trend", "p_pctl", "f_slope", "fb_long", "fb_neg", "cog_f",
-               "par_f", "fast_loop", "sync", "gap_pct", "conviction", "confidence"]
+               "par_f", "fast_loop", "sync", "gap_pct", "conviction", "confidence",
+               # 破裂(S4)判定依据：落盘成列，Alpha/agent 不必解 result_json 即可用
+               "dd_from_high", "vol_div_peak", "fuel_drop"]
 
 
 # ============================================================================

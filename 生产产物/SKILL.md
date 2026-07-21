@@ -49,6 +49,7 @@ tags: [quant, build, production, reflexivity, soros]
 | conviction / in_test | int / bool | 信念计数（扛过几次考验）/ 是否考验中 |
 | fragile_flag | bool | 脆弱预警（高质押/大解禁/折价出货） |
 | p_trend/f_slope/fb_long/fb_neg/cog_f/par_f/fast_loop/sync/gap_pct | float | 各读数（可追溯） |
+| dd_from_high / vol_div_peak / fuel_drop | float | 破裂(S4)判定三件套：距高点回撤% / 近 60 日量价顶背离峰值 / 燃料 20 日下滑 |
 | plain_text | string | 一段人话研判（可直接引用给用户） |
 | result_json | string | 完整诊断 JSON（含全中间状态） |
 | data_version / update_time | string | 版本 / 生成时间 |

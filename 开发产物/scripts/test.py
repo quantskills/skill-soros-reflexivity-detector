@@ -124,6 +124,80 @@ def test_negative_reflexivity():
     print(f"✅ test_negative_reflexivity（出现 S5，末态 {d['stage']}）")
 
 
+def _bust(n=340, seed=11):
+    """教科书破裂：盘整 → 加速上涨(顶部缩量=量价顶背离) → 自高点腰斩 + 融资退潮。
+    对应清单 #48「反转信号 = 斜率背离 + 交易量顶背离」与五阶段中的「破裂」。"""
+    rng = np.random.RandomState(seed)
+    n_up, n_dn = n - 70, 70
+    drift = np.r_[np.zeros(110), np.linspace(0.001, 0.008, n_up - 110)]
+    ret_up = drift + rng.normal(0, 0.008, n_up)
+    close_up = 20 * np.exp(np.cumsum(ret_up))
+    close_dn = close_up[-1] * np.exp(np.cumsum(np.full(n_dn, -0.016) + rng.normal(0, 0.012, n_dn)))
+    close = np.r_[close_up, close_dn]
+    # 量能：上涨前半段放量 → 后半段缩量(顶背离) → 崩盘继续缩量
+    vol = np.r_[np.linspace(1e7, 6e7, n_up // 2), np.linspace(6e7, 1.5e7, n_up - n_up // 2),
+                np.linspace(1.5e7, 8e6, n_dn)]
+    margin = np.r_[np.linspace(1e9, 9e9, n_up), np.linspace(9e9, 1.5e9, n_dn)]
+    panel, dates = _mk(close, n, margin_balance=margin,
+                       turnover=np.r_[np.linspace(1, 9, n_up), np.linspace(9, 1, n_dn)])
+    panel["volume"] = vol
+    panel["amount"] = close * vol
+    events = [{"date": dates[130].strftime("%Y%m%d"), "kind": "forecast", "value": 45.0},
+              {"date": dates[210].strftime("%Y%m%d"), "kind": "report", "value": 30.0}]
+    return panel, events, dates
+
+
+def test_rupture_stage_reachable():
+    """S4 破裂必须真的可达（曾是死代码：_raw_stage 无 S4 分支、break_dd 定义了没接上）。"""
+    panel, events, _ = _bust()
+    df = rx.compute_series(panel, events)
+    stages = list(df["stage"].unique())
+    assert "S4" in stages, f"崩盘剧本必须出现破裂 S4，实际只有 {sorted(stages)}"
+    s4 = df[df["stage"] == "S4"]
+    assert (s4["DD"] >= rx.DEFAULT_CONFIG["break_dd"]).all(), "S4 期间回撤须均达破裂门槛"
+    # S4 必须由反身性阶段掉出来（不是凭空出现）
+    first = df.index.get_loc(s4.index[0])
+    assert df["stage"].iloc[first - 1] in ("S1", "S2", "S3"), \
+        f"S4 前一日应处反身性阶段，实际 {df['stage'].iloc[first - 1]}"
+    d = rx.analyze(panel.loc[:s4.index[3]], events, as_of=s4.index[3].strftime("%Y%m%d"))
+    assert d["stage"] == "S4" and d["position_advice"] == "exit", (d["stage"], d["position_advice"])
+    assert d["dd_from_high"] >= 15 and "破裂" in d["plain_text"]
+    print(f"✅ test_rupture_stage_reachable（S4 可达 {len(s4)} 天，回撤 {d['dd_from_high']}%，advice=exit）")
+
+
+def test_volume_top_divergence():
+    """交易量顶背离：价创新高而量萎缩→高分；价量齐升→0 分（清单点名的反转信号）。"""
+    n = 200
+    up = 10 * np.exp(np.cumsum(np.full(n, 0.006)))
+    # A：顶部缩量（背离）
+    a, _ = _mk(up, n)
+    a["volume"] = np.r_[np.linspace(1e7, 6e7, n // 2), np.linspace(6e7, 1.2e7, n - n // 2)]
+    vd_a = rx.vol_divergence_series(a, 60)
+    # B：价量齐升（健康）
+    b, _ = _mk(up, n)
+    b["volume"] = np.linspace(1e7, 8e7, n)
+    vd_b = rx.vol_divergence_series(b, 60)
+    assert vd_a.max() >= 60, f"顶部缩量应判为顶背离，实际峰值 {vd_a.max():.1f}"
+    assert vd_b.max() < 20, f"价量齐升不应报顶背离，实际峰值 {vd_b.max():.1f}"
+    print(f"✅ test_volume_top_divergence（缩量顶背离={vd_a.max():.0f} / 价量齐升={vd_b.max():.0f}）")
+
+
+def test_no_false_rupture_without_loop():
+    """防误报：从未进入反身性回路的票，即使深度回撤也不得冒认 S4 破裂。
+    （真实数据 300750.SZ 曾因此被误判 S4/exit，见 quality_evidence.md）"""
+    rng = np.random.RandomState(23)
+    n = 320
+    # 无趋势盘整后单边阴跌：有回撤，但从没走出自我强化上涨
+    close = 30 * np.exp(np.cumsum(np.r_[rng.normal(0, 0.006, 200),
+                                        np.full(120, -0.004) + rng.normal(0, 0.006, 120)]))
+    panel, dates = _mk(close, n, margin_balance=np.r_[np.full(200, 5e9), np.linspace(5e9, 2e9, 120)])
+    df = rx.compute_series(panel, [])
+    dd_max = df["DD"].max()
+    assert dd_max >= 0.15, f"夹具应确有深度回撤，实际 {dd_max:.2f}"
+    assert "S4" not in set(df["stage"].unique()), "无回路的普通下跌不得判破裂 S4"
+    print(f"✅ test_no_false_rupture_without_loop（回撤达 {dd_max:.0%} 但无回路→不报 S4）")
+
+
 def test_no_false_S3_on_flat():
     """横盘不应误触发狂热 S3。"""
     rng = np.random.RandomState(9)
@@ -356,6 +430,9 @@ def test_real_data_optional():
 if __name__ == "__main__":
     test_state_machine_boom()
     test_negative_reflexivity()
+    test_rupture_stage_reachable()
+    test_volume_top_divergence()
+    test_no_false_rupture_without_loop()
     test_no_false_S3_on_flat()
     test_conviction_on_test()
     test_cogf_decay_twilight()

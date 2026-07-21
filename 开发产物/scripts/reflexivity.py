@@ -48,6 +48,9 @@ GLOSSARY: dict[str, str] = {
     "FB_long": "燃料表：还有多少新钱在进场（融资/游资/换手/回购增持）",
     "FB_neg": "油箱裂缝：高质押、大额解禁、大宗折价出货等随时引爆的脆弱度",
     "P趋势强度": "价格趋势的陡峭+稳定程度（斜率÷波动，类似 t 值）",
+    "VolDiv": "量价顶背离：股价还在往上顶，但买的人明显少了——抬轿子的在撤，虚",
+    "DD回撤": "现价距近期最高点跌了多少（破裂判定用）",
+    "破裂S4": "回路断了：曾经涨得好好的，现在从高点显著回撤+顶背离/燃料退潮——该走了",
     "Sync": "价格和基本面是否同向共振（反身性回路是否闭合）",
     "阶段S0-S5": "S0中性/S1先知先觉/S2大众追涨/S3狂热见暮色/S4破裂/S5越跌越卖",
     "PIT": "只用当时已公告的信息下判断，不偷看后来才发布的数据",
@@ -65,6 +68,8 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "gap_hot": 90.0,       # 狂热：价格-基本面裂口分位门槛
     "fragile_pledge": 55.0,  # 脆弱：累计质押率警戒线(%)
     "break_dd": 0.15,      # 破裂：距阶段高点回撤门槛
+    "voldiv_break": 60.0,  # 破裂：量价顶背离强度门槛（价创新高而量不跟）
+    "fuel_drop_break": 20.0,  # 破裂：燃料 20 日下滑幅度门槛（融资/游资退潮，须明显退潮）
     "neg_p": -1.0,         # 负反身性：下跌趋势强度门槛
     # —— 事件新鲜度（基本面事件多少交易日后衰减到 0）——
     "event_decay_days": 60,
@@ -369,6 +374,42 @@ def gap_series(panel: pd.DataFrame, f_df: pd.DataFrame, win: int) -> pd.Series:
     return (price_pctl - fund_pctl).rename("GAP")
 
 
+def vol_divergence_series(panel: pd.DataFrame, win: int) -> pd.Series:
+    """VolDiv：交易量顶背离强度（0..100，越高越背离）。
+
+    口径：价格创 `win` 内新高的同时，成交量（缺量用换手代）的 20 日均值却在萎缩
+    ——「价新高、量不跟」= 抬轿子的人在减少，是反身性回路失去燃料的经典顶部信号。
+    通俗：股价还在往上顶，但买的人明显少了，虚。
+    """
+    idx = panel.index
+    close = panel["close_adj"].astype(float)
+    vol = None
+    for c in ("volume", "amount", "turnover"):
+        if c in panel:
+            vol = panel[c].astype(float)
+            break
+    if vol is None:
+        return pd.Series(0.0, index=idx, name="VolDiv")
+    # 价格离滚动高点的接近度（1=正在创新高）
+    roll_hi = close.rolling(win, min_periods=5).max()
+    near_high = (close / roll_hi.replace(0, np.nan)).clip(0, 1).fillna(0.0)
+    # 量能趋势：20 日均量相对 win 内均量的比值（<1 = 缩量）
+    v_ma = vol.rolling(20, min_periods=5).mean()
+    v_base = vol.rolling(win, min_periods=5).mean()
+    v_ratio = (v_ma / v_base.replace(0, np.nan)).fillna(1.0)
+    # 背离 = 价近高点(≥0.95) 且 量萎缩(<1)；强度按二者共同程度线性放大
+    price_part = ((near_high - 0.95) / 0.05).clip(0, 1)      # 0.95→0, 1.0→1
+    vol_part = ((1.0 - v_ratio) / 0.4).clip(0, 1)             # 缩量 40% → 满分
+    return (price_part * vol_part * 100.0).fillna(0.0).rename("VolDiv")
+
+
+def drawdown_series(panel: pd.DataFrame, win: int) -> pd.Series:
+    """DD：距 `win` 内滚动高点的回撤比例（0..1）。破裂判定用。"""
+    close = panel["close_adj"].astype(float)
+    roll_hi = close.rolling(win, min_periods=5).max()
+    return (1.0 - close / roll_hi.replace(0, np.nan)).fillna(0.0).clip(0, 1).rename("DD")
+
+
 def attention_score(panel: pd.DataFrame, win: int) -> pd.Series:
     """关注度分（0..100）：涨停次数 + 龙虎榜 + 换手分位 + 振幅分位（快环用）。"""
     idx = panel.index
@@ -436,9 +477,21 @@ def compute_series(panel: pd.DataFrame, events: Optional[list[dict]] = None,
     FastLoop = fast_loop_series(P, Attn, Money)
     P_pctl = _roll_pct_rank(P, pw).rename("P_pctl")
     GAP_pctl = _roll_pct_rank(GAP, pw).rename("GAP_pctl")
+    # —— 破裂判定四件套：回撤 / 顶背离(曾出现) / 破裂前曾走出趋势 / 燃料退潮 ——
+    DD = drawdown_series(panel, pw)
+    VolDiv = vol_divergence_series(panel, pw)
+    # 顶背离是"顶部"信号：跌下来之后当日 VolDiv 自然归零，所以取近 60 日峰值
+    # ——语义是"顶部出现过量价背离，随后跌破"，正是清单要的反转信号。
+    VolDivPeak = VolDiv.rolling(60, min_periods=1).max().fillna(0.0).rename("VolDivPeak")
+    # 破裂前曾走出明确趋势（阴跌一路的票不该被判"破裂"）。
+    # 用 P 峰值而非 P_pctl 峰值：P_pctl 在 pct_win=250 时需 310 日历史才非 NaN，短历史会静默失效。
+    PeakP = P.rolling(pw, min_periods=5).max().fillna(-9.9).rename("PeakP")
+    # 燃料退潮：FB_long 相对 20 日前的下滑幅度
+    FBL_drop = (FBL.shift(20) - FBL).fillna(0.0).rename("FBL_drop")
 
     df = pd.concat([panel.get("close_adj"), P, P_acc, Fdf, FBL, FBN, CogF, ParF,
-                    Sync, GAP, GAP_pctl, P_pctl, Attn, Money, FastLoop], axis=1)
+                    Sync, GAP, GAP_pctl, P_pctl, Attn, Money, FastLoop,
+                    DD, VolDiv, VolDivPeak, PeakP, FBL_drop], axis=1)
     df["loop_type"] = loop_type
     # 逐日原始阶段 + 状态机确认
     df["raw_stage"] = df.apply(lambda r: _raw_stage(r, cfg), axis=1)
@@ -485,9 +538,20 @@ def _raw_stage(r: pd.Series, cfg: dict) -> str:
     P_pctl = _safe(r.get("P_pctl"), 50)
     GAP_pctl = _safe(r.get("GAP_pctl"), 50)
     turn_hot = _safe(r.get("Attn"), 50) >= cfg["hot_pctl"]
-    # 负反身性侧
+    DD = _safe(r.get("DD"))
+    VolDivPeak = _safe(r.get("VolDivPeak"))
+    PeakP = _safe(r.get("PeakP"), -9.9)
+    FBL_drop = _safe(r.get("FBL_drop"))
+    # 负反身性侧：下跌趋势已确立（跌→抛售→再跌）
     if P <= cfg["neg_p"] and Fs <= 0:
         return "S5"
+    # 破裂：曾走出明确趋势 + 自高点显著回撤 + (顶部量价背离 或 燃料退潮 或 基本面转弱)
+    # ——回路断了但还没跌成负反身性趋势，正是"该走"的窗口；
+    #   对应清单「反转信号 = 斜率背离 + 交易量顶背离」。
+    if (PeakP >= cfg["p_s2"] and DD >= cfg["break_dd"]
+            and (VolDivPeak >= cfg["voldiv_break"]
+                 or FBL_drop >= cfg["fuel_drop_break"] or Fs < 0)):
+        return "S4"
     # 狂热：高分位 + (基本面停修 或 裂口过大) + 拥挤/情绪极端
     if P_pctl >= cfg["hot_pctl"] and (Fs <= 0 or GAP_pctl >= cfg["gap_hot"]) and turn_hot:
         return "S3"
@@ -525,6 +589,11 @@ def _run_state_machine(df: pd.DataFrame, panel: pd.DataFrame, cfg: dict, confirm
             window = raw[i - confirm + 1:i + 1]
             if len(set(window)) == 1 and window[0] != cur:
                 nxt = window[0]
+                # 破裂是"从回路里掉出来"的转移，不是单日独立判据：
+                # 只有先前确实处在反身性阶段(S1/S2/S3)才谈得上"回路破裂"；
+                # 从未入过回路的票即便深度回撤也只是普通下跌 → 落 S0，不冒认 S4。
+                if nxt == "S4" and cur not in ("S1", "S2", "S3"):
+                    nxt = "S0"
                 # 从 S2/S3 掉出且非破裂/负侧时，若仍上涨→视作考验而非切换
                 cur = nxt
         # 考验：触发须在 S2；但"回调→创新高"的跟踪独立于 cur——回调必然让 cur 暂时切出
@@ -614,6 +683,11 @@ def analyze(panel: pd.DataFrame, events: Optional[list[dict]] = None,
         "fast_loop": round(_safe(row["FastLoop"], 50), 1),
         "sync": round(_safe(row["Sync"], 50), 1),
         "gap_pct": round(_safe(row["GAP"], 0), 1),
+        # 破裂三件套（S4 判定依据，可追溯）
+        "dd_from_high": round(_safe(row.get("DD")) * 100, 1),         # 距高点回撤 %
+        "vol_divergence": round(_safe(row.get("VolDiv")), 1),         # 当日量价顶背离强度 0-100
+        "vol_div_peak": round(_safe(row.get("VolDivPeak")), 1),       # 近 60 日顶背离峰值（S4 判定用的就是它）
+        "fuel_drop": round(_safe(row.get("FBL_drop")), 1),            # 燃料 20 日下滑幅度
         "score_breakdown": _score_breakdown(row),
     }
     diag["confidence_band"] = _band(diag["confidence"], 0.3, 0.6)
@@ -664,7 +738,13 @@ def _plain_text(d: dict) -> str:
         cogtxt = f"、'利好不涨'迹象已现（CogF={cog}，认知弹性在衰减）" if cog <= 45 else f"（CogF={cog}）"
         parts.append(f"价格分位极高、基本面跟不上{cogtxt}，进入狂热见暮色区（GAP={gap}）；透支越深，一旦转向回撤越急。")
     elif st == "S4":
-        parts.append(f"自高点显著回撤、量价背离、融资退潮，反身性回路破裂（脆弱度 FB_neg={fbn}）。")
+        dd, vd, fd = d.get("dd_from_high", 0), d.get("vol_div_peak", 0), d.get("fuel_drop", 0)
+        why = []
+        if vd >= 60: why.append(f"顶部出现过量价背离（VolDiv 峰值={vd}，当时价创新高而量不跟）")
+        if fd >= 8: why.append(f"燃料 20 日内掉了 {fd} 分（融资/游资退潮）")
+        whytxt = "；".join(why) if why else "基本面同步转弱"
+        parts.append(f"自高点回撤 {dd}%、{whytxt}，反身性回路破裂（脆弱度 FB_neg={fbn}）；"
+                     "回路一断，前期靠'涨→更多人买→再涨'堆起来的筹码会反向踩踏。")
     elif st == "S5":
         spiral = "（含质押螺旋：跌→强平→再跌）" if d["fragile"] else ""
         parts.append(f"价格与基本面同步向下、越跌越卖的负反身性{spiral}；脆弱度 FB_neg={fbn}。")
