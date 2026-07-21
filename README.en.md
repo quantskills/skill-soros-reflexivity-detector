@@ -5,7 +5,7 @@
 > **Reflexivity = the self-reinforcing loop where rising begets rising and falling begets falling.**
 > This tool quantifies the *strength and stage* of "price making its own trend", answering
 > "can I ride it / which turn of the loop is it on / when should I be out"
-> — **it does not predict tops or bottoms and is not investment advice.**
+> — **it does not predict tops or bottoms.**
 
 > Project status: QUANTSKILLS **Community Project** — not reviewed, certified or endorsed by QuantSkills. Task ID `#48`.
 
@@ -32,7 +32,7 @@ This skill **quantifies** that loop and answers the three questions that matter 
 
 1. Is this move **self-reinforcing** (can you ride it)?
 2. Which **turn of the loop** is it on (position discipline)?
-3. Is **fuel** (fresh money) still flowing, and is the **tank leaking** (pledge / lockup release / block trades)?
+3. Is **fresh capital** still flowing in, and is **latent selling pressure** (pledges / lockup releases / discounted block trades) building?
 
 **Explicitly does NOT**: predict tops or bottoms, judge "value", or assume market efficiency.
 
@@ -73,19 +73,19 @@ stateDiagram-v2
 
     S0: 🔘 S0 neutral - no self-reinforcing loop
     S1: 🌱 S1 early - smart money in, crowd unaware
-    S2: 🚀 S2 crowd chasing - fuelled and accelerating
+    S2: 🚀 S2 crowd chasing - well funded and accelerating
     S2T: 🥊 S2T under test - shakeout; surviving adds conviction
     S3: 🔥 S3 euphoria to twilight - "good news, no rally" is the first alarm
-    S4: 💥 S4 rupture - drawdown + volume divergence + fuel retreat
+    S4: 💥 S4 rupture - drawdown + volume divergence + capital retreat
     S5: ❄️ S5 negative reflexivity - falling begets selling
 
     S0 --> S1: weak trend + upgrade + same direction
-    S1 --> S2: clear trend + acceleration + fuel
+    S1 --> S2: clear trend + acceleration + inflows
     S2 --> S2T: 5-12% pullback, fundamentals intact
     S2T --> S2: new high, conviction +1
     S2T --> S0: trend broken, test failed
     S2 --> S3: extreme percentile + fundamentals lag
-    S3 --> S4: drawdown >=15% + divergence or fuel retreat
+    S3 --> S4: drawdown >=15% + divergence or capital retreat
     S2 --> S4: same
     S4 --> S5: downtrend established
     S3 --> S5: outright collapse
@@ -96,14 +96,14 @@ stateDiagram-v2
 |---|---|---|
 | `S0` neutral | no self-reinforcing loop | `observe` |
 | `S1` early | smart money entering, trend not yet recognised | `observe` |
-| `S2` accelerating | crowd chasing, fuel ample (includes the **test**: surviving a shakeout adds conviction) | **`add`** |
+| `S2` accelerating | crowd chasing, inflows ample (includes the **test**: surviving a shakeout adds conviction) | **`add`** |
 | `S3` euphoria → twilight | extreme percentile, fundamentals cannot keep up; **"good news, no rally" (CogF decay) is the first twilight signal** | **`reduce`** |
-| `S4` rupture | ≥15% drawdown from the high + **volume top divergence** / fuel retreat → the loop is broken | `exit` |
+| `S4` rupture | ≥15% drawdown from the high + **volume top divergence** / capital retreat → the loop is broken | `exit` |
 | `S5` negative reflexivity | falling begets selling (incl. pledge spiral: fall → forced liquidation → fall) | `avoid` |
 
 > **Rupture is only ever fallen into from inside the loop**: a name that never reached S1/S2/S3 is merely declining,
 > however deep the drawdown, and will not be mislabelled S4.
-> Volume top divergence means "**price makes new highs while volume does not follow**" — the bidders are leaving.
+> Volume top divergence means "**price makes new highs while volume does not follow**", i.e. bids are thinning.
 
 ---
 
@@ -116,9 +116,9 @@ stateDiagram-v2
 | `GAP` | price percentile − fundamental percentile | how far price has run ahead of fundamentals |
 | `CogF` | cognitive-function activity | market excitement about good news; **"good news, no rally" = excitement exhausted** |
 | `ParF` | participating-function activity | is the price "creating" fundamentals (placements at highs, buybacks fattening EPS) |
-| `FB_long` | positive-feedback fuel | how much fresh money is still arriving (margin / hot money / turnover / buybacks) |
-| `FB_neg` | negative-feedback fragility | leaks in the tank: heavy pledging, large lockup releases, discounted block trades |
-| `VolDiv` | volume top divergence | price still pushing up but visibly fewer buyers — hollow |
+| `FB_long` | positive-feedback inflow | how much fresh capital is still arriving (margin / hot money / turnover / buybacks) |
+| `FB_neg` | negative-feedback fragility | latent selling pressure: heavy pledging, large lockup releases, discounted block trades |
+| `VolDiv` | volume top divergence | price still making new highs while volume contracts — bids are thinning |
 | `conviction` | conviction count | how many shakeouts it survived; **the more it survives, the more dangerous the belief** |
 
 Every output carries a `plain_text` verdict in ordinary language, quotable directly to the user.

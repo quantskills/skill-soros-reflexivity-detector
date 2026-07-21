@@ -132,7 +132,7 @@ def _reads(diag: dict) -> list[tuple[str, Any, str]]:
     def h_fbl(v):
         return "新钱仍在涌入（燃料足）" if v >= 60 else ("燃料一般" if v >= 40 else "新钱在撤（燃料枯）")
     def h_fbn(v):
-        return "⚠️ 油箱裂缝大（高质押/大解禁/折价出货）" if v >= 55 else ("有些脆弱" if v >= 30 else "脆弱度低")
+        return "⚠️ 潜在抛压大（高质押/大解禁/折价出货）" if v >= 55 else ("有些脆弱" if v >= 30 else "脆弱度低")
     def h_fast(v):
         return "热度和钱在互相点火" if v >= 60 else "情绪-资金共振弱"
     def h_sync(v):
