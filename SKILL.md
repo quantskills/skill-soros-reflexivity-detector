@@ -1,8 +1,8 @@
 ---
 name: skill-soros-reflexivity-detector
-description: 索罗斯反身性识别器——用双环模型（快环情绪-资金 / 慢环基本面-资本）判断 A 股"这波涨跌是不是自我强化的反身性、转到哪一圈、燃料和裂缝在哪"，做阶段识别与仓位纪律。BUILD 型 skill，可被复盘 agent 或 Alpha 调用。
-tags: [quant, build, reflexivity, soros, regime]
+description: 索罗斯反身性识别器：用快环（情绪-资金）与慢环（基本面-资本）双环模型判断 A 股行情是否处于自我强化的反身性状态、处于八阶段的哪一段，并给出燃料、裂缝与仓位纪律参考，不预测顶底。Use when the user wants to know whether an A-share move is a self-reinforcing reflexive regime, which stage it is in, and what position discipline applies. Research and education only, not investment advice.
 license: GPL-3.0-only
+supported-runtimes: [cursor, claude-code, codex, hermes, openclaw]
 metadata:
   organization: QuantSkills
   organization_url: https://github.com/quantskills
@@ -10,9 +10,33 @@ metadata:
   repository_url: https://github.com/quantskills/skill-soros-reflexivity-detector
   project_type: skill
   collection: master-strategies
+  maintainer: ZLHad
+  tags: [a-share, reflexivity, soros, market-regime, sentiment, pandadata]
+quantSkills:
+  schema_version: 2.1.0
+  organization: quantskills
+  organization_url: https://github.com/quantskills
+  repository: skill-soros-reflexivity-detector
+  repository_url: https://github.com/quantskills/skill-soros-reflexivity-detector
+  project_type: skill
   license: GPL-3.0-only
-  status: community-project
-  platforms: [claude-code, codex, cursor, hermes, openclaw]
+  maintainer: ZLHad
+  collection: master-strategies
+  catalog:
+    category: "03"
+    subcategory: 03.a-share-equity
+  workflow:
+    primary_stage: reporting
+    workflow_stages: [data-ingestion, modeling, reporting]
+  tags: [a-share, reflexivity, soros, market-regime, sentiment, pandadata]
+  platforms: [cursor, claude-code, codex, hermes, openclaw]
+  status: active
+  validation_level: listed
+  maintainer_type: community
+  summary_zh: "用快环与慢环双环模型识别 A 股自我强化的反身性行情，输出八阶段判定、燃料与裂缝以及仓位纪律参考，不预测顶底。"
+  summary_en: "Detects self-reinforcing reflexive regimes in A-shares with a fast/slow dual-loop model and outputs an eight-stage classification plus position discipline; no top or bottom forecasts. Research only."
+  interface:
+    mode: natural-language
 ---
 
 # 索罗斯反身性识别器（#48）

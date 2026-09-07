@@ -17,11 +17,11 @@ tags: [quant, build, production, reflexivity, soros]
 - 路径：`database.parquet`
 - 格式：Parquet（无 pyarrow 时开发脚本降级 CSV）
 - 更新频率：每日收盘后 `maintain_daily()` 追加
-- 生成任务：`scripts/build.py`（watchlist 或 scan 漏斗）
+- 生成任务：`开发产物/scripts/build.py`（watchlist 或 scan 漏斗）
 
 ## 当前内容（随包样例，真实数据）
 
-- **溯源**：由 `python scripts/build.py --mode watchlist --symbols 300750.SZ 688256.SH --date 20260710 --save`
+- **溯源**：由 `python 开发产物/scripts/build.py --mode watchlist --symbols 300750.SZ 688256.SH --date 20260710 --save`
   从 **真实 PandaData** 生成（非合成/非测试桩），可用同一命令重建。
 - 规模：**3 行 / 1 个交易日（20260710）** ——
   2 行 `reflexivity_stock`（300750.SZ 宁德时代、688256.SH 寒武纪）+ 1 行 `reflexivity_summary`（MARKET 汇总）。

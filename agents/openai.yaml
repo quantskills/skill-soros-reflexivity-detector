@@ -1,3 +1,6 @@
+name: skill-soros-reflexivity-detector
+entrypoint: SKILL.md
+canonical_root: SKILL.md
 interface:
   display_name: "Soros Reflexivity Detector"
   short_description: "Identify self-reinforcing reflexive regimes in A-shares with a fast/slow dual-loop model"
