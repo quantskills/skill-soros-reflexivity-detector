@@ -1,0 +1,4 @@
+interface:
+  display_name: "Soros Reflexivity Detector"
+  short_description: "Identify self-reinforcing reflexive regimes in A-shares with a fast/slow dual-loop model"
+  default_prompt: "Use $skill-soros-reflexivity-detector when the user wants to know whether an A-share move is a self-reinforcing reflexive regime, which of the eight stages it is in, where the fuel and cracks are, and what position discipline applies. Read SKILL.md first and follow its data-scope rules."

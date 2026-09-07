@@ -1,0 +1,41 @@
+---
+description: Use the Soros Reflexivity Detector skill (skill-soros-reflexivity-detector) when the user wants to know whether an A-share move is a self-reinforcing reflexive regime, which of the eight stages it is in, where the fuel and cracks are, and what position discipline applies.
+alwaysApply: false
+---
+
+# Soros Reflexivity Detector Skill (skill-soros-reflexivity-detector)
+
+当用户想判断一只/一批 A 股当前涨跌是不是自我强化的反身性行情、处于八阶段的哪一段、燃料与裂缝在哪、仓位纪律怎么定时，读取并遵循 [SKILL.md](../SKILL.md) 作为本 skill 的规范说明。
+详细调用声明见 `开发产物/SKILL.md`。
+
+Use this skill when the user wants to know whether an A-share move is a self-reinforcing reflexive regime, which of the eight stages it is in, where the fuel and cracks are, and what position discipline applies. Read and follow [SKILL.md](../SKILL.md) as the canonical
+instructions; the detailed agent-facing declaration lives in `开发产物/SKILL.md`.
+
+## Workflow
+
+1. Read `SKILL.md`, then `开发产物/SKILL.md`.
+2. Read the references before changing any data logic:
+- `开发产物/references/api_guide.md`
+- `开发产物/references/quality_evidence.md`
+3. Run the entrypoints from the repository root:
+
+```bash
+python 开发产物/scripts/build.py --mode watchlist --symbols 300750.SZ 688256.SH --date 20260710 --save
+python 开发产物/scripts/build.py --mode scan
+python 开发产物/scripts/test.py
+```
+
+## Hard rules / 硬性口径
+
+1. 双环模型：快环（情绪-资金）与慢环（基本面-资本）分别打分，再合成阶段；不要把单环读数当整体结论
+2. 输出是阶段识别与仓位纪律参考，不预测顶底、不是交易指令；北向个股数据 2024/08 后多停披露，相关成分默认零权重
+3. 学术术语必须配一行通俗解读（如：反身性 = 涨会让它更涨、跌会让它更跌的自我强化循环）
+
+1. Dual-loop model: score the fast loop (sentiment-flows) and the slow loop (fundamentals-capital) separately, then compose the stage; never present a single-loop reading as the overall verdict
+2. Output is stage identification plus position discipline, not a top/bottom forecast and not a trade instruction; northbound per-stock data mostly stopped after 2024-08 and those components default to zero weight
+3. Pair every academic term with a one-line plain-language gloss
+
+## Boundaries
+
+- Data source is PandaData via `panda_data`; credentials come only from environment variables or `~/.pandadata/pandadata.env`. Never hard-code or echo credentials.
+- Community Project, not reviewed, certified, or endorsed by QuantSkills. Research and educational use only; no investment advice, no return promises.

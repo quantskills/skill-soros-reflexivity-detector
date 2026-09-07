@@ -12,6 +12,7 @@ metadata:
   collection: master-strategies
   license: GPL-3.0-only
   status: community-project
+  platforms: [claude-code, codex, cursor, hermes, openclaw]
 ---
 
 # 索罗斯反身性识别器（#48）
