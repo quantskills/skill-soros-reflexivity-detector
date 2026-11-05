@@ -72,3 +72,7 @@ python 开发产物/scripts/test.py                              # 全离线自�
 ## 边界与免责
 
 数据源 PandaData。**Community Project，未经 QuantSkills 官方审核/认证/背书。仅量化研究与教育示例，不构成投资建议，不承诺收益，不预测顶底。** 反身性阶段与仓位建议为纪律参考，非交易指令。数据源/假设/参数/限制/风险边界见开发产物 SKILL.md 与 references/。
+
+## Pandadata compatibility
+
+[Pandadata 1.0.6 compatibility](references/pandadata-compatibility.md) — exact SDK baseline, validation scope, and shared guidance for all supported agent runtimes.
